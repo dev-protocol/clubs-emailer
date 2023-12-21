@@ -179,7 +179,7 @@ func main() {
 					isInDraft, ok := valueMap["isInDraft"].(bool)
 					if !ok {
 						log.Printf("%s is not a bool for isInDraft", clubConfig.Name)
-						log.Fatal("Could not cast isInDraft to bool")
+						continue
 					}
 
 					uid, ok := valueMap["uid"].(string)
@@ -187,9 +187,11 @@ func main() {
 						continue
 					}
 
+					/**
+					 * If isInDraft is true, and uid is not empty string
+					 * add to unpublishedClubUsers
+					 */
 					if isInDraft && uid != "" {
-						// fmt.Printf("Club: %s is in draft\n", clubConfig.Name)
-
 						unpublishedClubUsers = append(unpublishedClubUsers, UnpublishedClubUser{
 							Email:    "",
 							Uid:      &uid,
@@ -202,7 +204,7 @@ func main() {
 	} // end loop through keys
 
 	/**
-	 * Print unpublished club users
+	 * Now let's fetch the email based on uid
 	 */
 	for i := range unpublishedClubUsers {
 
