@@ -1,0 +1,4 @@
+.env
+firebase-service-account-key.json
+unpublished-club-users.json
+.DS_Store
