@@ -21,12 +21,6 @@ import (
 
 var ctx = context.Background()
 
-type ClubEmail struct {
-	ClubName string `json:"clubName"`
-	Email    string `json:"email"`
-	Error    *error `json:"error,omitempty"`
-}
-
 type ClubConfig struct {
 	Name            string        `json:"name"`
 	TwitterHandle   string        `json:"twitterHandle"`
