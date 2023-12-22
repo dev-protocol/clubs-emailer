@@ -12,7 +12,6 @@ import (
 
 	firebase "firebase.google.com/go"
 
-	"github.com/joho/godotenv"
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v2"
 
@@ -49,30 +48,12 @@ type UnpublishedClubUser struct {
 
 func main() {
 
-	err := godotenv.Load()
+	env, err := LoadEnvVars()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal("Error loading config: ", err)
 	}
 
-	redisAddress := os.Getenv("REDIS_ADDRESS")
-	redisPassword := os.Getenv("REDIS_PASSWORD")
-	redisUsername := os.Getenv("REDIS_USERNAME")
-
-	// FSA = Firebase Service Account
-	fsaProjectId := os.Getenv("FSA_PROJECT_ID")
-	fsaPrivateKey := os.Getenv("FSA_PRIVATE_KEY")
-	fsaPrivateKeyId := os.Getenv("FSA_PRIVATE_KEY_ID")
-	fsaClientEmail := os.Getenv("FSA_CLIENT_EMAIL")
-
-	/**
-	 * Check if REDIS_URL and REDIS_PASSWORD are set
-	 */
-	if redisAddress == "" || redisPassword == "" || redisUsername == "" || fsaPrivateKey == "" || fsaPrivateKeyId == "" || fsaProjectId == "" || fsaClientEmail == "" {
-		fmt.Println("Please check correct environment variables are set")
-		os.Exit(1)
-	}
-
-	redisUrl, err := url.Parse(redisAddress)
+	redisUrl, err := url.Parse(env.RedisAddress)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,13 +63,13 @@ func main() {
 	 */
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     redisUrl.Host,
-		Password: redisPassword, // no password set
-		Username: redisUsername,
+		Password: env.RedisPassword, // no password set
+		Username: env.RedisUsername,
 		DB:       0, // use default DB
 	})
 
 	// needed to replace newlines in private key
-	fsaPrivateKey = strings.ReplaceAll(fsaPrivateKey, "\n", "\\n")
+	fsaPrivateKey := strings.ReplaceAll(env.FSAPrivateKey, "\n", "\\n")
 
 	/**
 	 * Initialize Firebase Admin SDK
@@ -96,9 +77,9 @@ func main() {
 	opt := option.WithCredentialsJSON([]byte(`{
 		"type": "service_account",
 		"private_key": "` + fsaPrivateKey + `",
-		"private_key_id": "` + fsaPrivateKeyId + `",
-		"project_id": "` + fsaProjectId + `",
-		"client_email": "` + fsaClientEmail + `"
+		"private_key_id": "` + env.FSAPrivateKeyId + `",
+		"project_id": "` + env.FSAProjectId + `",
+		"client_email": "` + env.FSAClientEmail + `"
 	}`))
 
 	firebase, err := firebase.NewApp(ctx, nil, opt)
