@@ -1,4 +1,6 @@
 .env
 firebase-service-account-key.json
-unpublished-club-users.json
+club-users-published.json
+club-users-unpublished.json
 .DS_Store
+clubs-emailer

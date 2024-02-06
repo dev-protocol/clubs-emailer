@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	firebase "firebase.google.com/go"
+	"firebase.google.com/go/auth"
 
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v2"
@@ -40,7 +41,7 @@ type ClubOption struct {
 	Value interface{} `json:"value"`
 }
 
-type UnpublishedClubUser struct {
+type ClubUser struct {
 	Email    string  `json:"email"`
 	Uid      *string `json:"uid"`
 	ClubName string  `json:"clubName"`
@@ -98,7 +99,8 @@ func main() {
 		panic(err)
 	}
 
-	unpublishedClubUsers := []UnpublishedClubUser{}
+	unpublishedClubUsers := []ClubUser{}
+	publishedClubUsers := []ClubUser{}
 
 	for _, key := range keys {
 
@@ -134,6 +136,8 @@ func main() {
 		err = yaml.Unmarshal(decodedConfig, &clubConfig)
 		if err != nil {
 			fmt.Printf("Error parsing YAML for: %s\n", string(decodedConfig)) // Add this line
+			fmt.Printf("Error parsing YAML: %v\n", err)                       // Add this line
+			fmt.Println("-------------------")
 			// skip to next club
 			continue
 		}
@@ -167,7 +171,19 @@ func main() {
 					 * add to unpublishedClubUsers
 					 */
 					if isInDraft && uid != "" {
-						unpublishedClubUsers = append(unpublishedClubUsers, UnpublishedClubUser{
+						unpublishedClubUsers = append(unpublishedClubUsers, ClubUser{
+							Email:    "",
+							Uid:      &uid,
+							ClubName: clubConfig.Name,
+						})
+					}
+
+					/**
+					 * If isInDraft is false, and uid is not empty string
+					 * add to publishedClubUsers
+					 */
+					if !isInDraft && uid != "" {
+						publishedClubUsers = append(publishedClubUsers, ClubUser{
 							Email:    "",
 							Uid:      &uid,
 							ClubName: clubConfig.Name,
@@ -179,25 +195,55 @@ func main() {
 	} // end loop through keys
 
 	/**
-	 * Now let's fetch the email based on uid
+	 * Now let's fetch the email of unpublished club users based on uid
 	 */
 	for i := range unpublishedClubUsers {
 
 		// get user by uid
-		userRecord, err := client.GetUser(ctx, *unpublishedClubUsers[i].Uid)
+		email, err := fetchUserEmailByUid(*unpublishedClubUsers[i].Uid, client)
 		if err != nil {
-			fmt.Printf("Error fetching user data: %v\n", err)
+			log.Printf("Error fetching user email for uid: %s", *unpublishedClubUsers[i].Uid)
 			continue
 		}
 
 		// get user email
-		unpublishedClubUsers[i].Email = userRecord.Email
+		unpublishedClubUsers[i].Email = email
+	}
+
+	/**
+	 * Now let's fetch the email of unpublished club users based on uid
+	 */
+	for i := range publishedClubUsers {
+
+		// get user by uid
+		email, err := fetchUserEmailByUid(*publishedClubUsers[i].Uid, client)
+		if err != nil {
+			log.Printf("Error fetching user email for uid: %s", *publishedClubUsers[i].Uid)
+			continue
+		}
+
+		// get user email
+		publishedClubUsers[i].Email = email
 	}
 
 	/**
 	 * Turn unpublishedClubUsers into JSON, and write to file
 	 */
-	file, _ := json.MarshalIndent(unpublishedClubUsers, "", " ")
-	_ = os.WriteFile("unpublished-club-users.json", file, 0644)
+	unpublishedFile, _ := json.MarshalIndent(unpublishedClubUsers, "", " ")
+	_ = os.WriteFile("club-users-unpublished.json", unpublishedFile, 0644)
 
+	/**
+	 * Turn unpublishedClubUsers into JSON, and write to file
+	 */
+	publishedFile, _ := json.MarshalIndent(publishedClubUsers, "", " ")
+	_ = os.WriteFile("club-users-published.json", publishedFile, 0644)
+}
+
+func fetchUserEmailByUid(uid string, client *auth.Client) (string, error) {
+	userRecord, err := client.GetUser(ctx, uid)
+	if err != nil {
+		return "", err
+	}
+
+	return userRecord.Email, nil
 }
